@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Balanço de Estoque</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+    h2 { text-align: center; }
+    #reader { width: 100%; max-width: 400px; margin: auto; }
+    .info { margin-top: 20px; }
+    input[type="number"], button {
+      width: 100%; padding: 10px; margin-top: 10px;
+      font-size: 16px;
+    }
+    .status { margin-top: 20px; text-align: center; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<h2>Balanço de Estoque</h2>
+
+<div id="reader"></div>
+
+<div class="info" id="sku-info" style="display:none;">
+  <p><strong>SKU:</strong> <span id="sku"></span></p>
+  <input type="number" id="quantidade" placeholder="Digite a quantidade">
+  <button onclick="enviar()">Enviar para o n8n</button>
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+  let skuLido = "";
+
+  function onScanSuccess(decodedText) {
+    // Espera SKU no QR code
+    const match = decodedText.match(/SKU:\s*(.*)/);
+    if (match) {
+      skuLido = match[1].trim();
+      document.getElementById("sku").textContent = skuLido;
+      document.getElementById("sku-info").style.display = "block";
+      html5QrcodeScanner.clear();
+    } else {
+      alert("QR Code inválido. Esperado formato: 'SKU: xxx'");
+    }
+  }
+
+  function enviar() {
+    const quantidade = document.getElementById("quantidade").value;
+    if (!quantidade || isNaN(quantidade)) {
+      alert("Digite uma quantidade válida.");
+      return;
+    }
+
+    fetch("https://SEU_WEBHOOK_DO_N8N", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tipo: "balanco",
+        sku: skuLido,
+        quantidade: parseInt(quantidade, 10)
+      })
+    })
+    .then(res => res.ok ? "Enviado com sucesso!" : "Erro ao enviar.")
+    .then(msg => document.getElementById("status").textContent = msg)
+    .catch(err => document.getElementById("status").textContent = "Falha: " + err);
+  }
+
+  const html5QrcodeScanner = new Html5Qrcode("reader");
+  html5QrcodeScanner.start(
+    { facingMode: "environment" },
+    {
+      fps: 10,
+      qrbox: 250
+    },
+    onScanSuccess
+  ).catch(err => {
+    document.getElementById("reader").innerText = "Erro ao acessar a câmera: " + err;
+  });
+</script>
+
+</body>
+</html>
