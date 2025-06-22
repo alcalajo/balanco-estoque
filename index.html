@@ -9,15 +9,58 @@
       font-family: Arial, sans-serif;
       padding: 20px;
       background-color: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
     }
-    h2 { text-align: center; }
-    #reader { width: 100%; max-width: 400px; margin: auto; }
-    .info { margin-top: 20px; }
-    input[type="number"], button {
-      width: 100%; padding: 10px; margin-top: 10px;
-      font-size: 16px;
+    h2 { text-align: center; margin-bottom: 20px; }
+    #reader { width: 100%; max-width: 400px; margin-bottom: 30px; }
+    .info {
+      width: 100%;
+      max-width: 400px;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      text-align: center;
     }
-    .status { margin-top: 20px; text-align: center; font-weight: bold; }
+    .info p {
+      font-size: 18px;
+      margin-bottom: 15px;
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: 15px;
+      font-size: 24px;
+      border: 2px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 15px;
+      font-size: 24px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #218838;
+    }
+    .status {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 18px;
+      min-height: 24px;
+      color: #333;
+    }
   </style>
 </head>
 <body>
@@ -28,13 +71,28 @@
 
 <div class="info" id="sku-info" style="display:none;">
   <p><strong>SKU:</strong> <span id="sku"></span></p>
-  <input type="number" id="quantidade" placeholder="Digite a quantidade">
-  <button onclick="enviar()">Enviar para o n8n</button>
+  <input type="number" id="quantidade" placeholder="Digite a quantidade" min="0" step="1" inputmode="numeric" pattern="[0-9]*" />
+  <button onclick="enviar()">Enviar</button>
   <div class="status" id="status"></div>
 </div>
 
 <script>
   let skuLido = "";
+
+  function playSuccessSound() {
+    // Som simples via Web Audio API
+    const ctx = new AudioContext();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.value = 880; // frequencia em Hz
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.start();
+    g.gain.setValueAtTime(1, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+    o.stop(ctx.currentTime + 0.2);
+  }
 
   function onScanSuccess(decodedText) {
     skuLido = decodedText.trim();
@@ -47,11 +105,16 @@
     document.getElementById("sku").textContent = skuLido;
     document.getElementById("sku-info").style.display = "block";
     html5QrcodeScanner.clear();
+
+    // Focar no campo quantidade e abrir teclado automaticamente
+    const inputQtd = document.getElementById("quantidade");
+    inputQtd.value = "";
+    inputQtd.focus();
   }
 
   function enviar() {
     const quantidade = document.getElementById("quantidade").value;
-    if (!quantidade || isNaN(quantidade)) {
+    if (!quantidade || isNaN(quantidade) || quantidade < 0) {
       alert("Digite uma quantidade válida.");
       return;
     }
@@ -65,9 +128,20 @@
         quantidade: parseInt(quantidade, 10)
       })
     })
-    .then(res => res.ok ? "Enviado com sucesso!" : "Erro ao enviar.")
-    .then(msg => document.getElementById("status").textContent = msg)
-    .catch(err => document.getElementById("status").textContent = "Falha: " + err);
+    .then(res => {
+      if (res.ok) {
+        playSuccessSound();
+        document.getElementById("status").textContent = "Enviado com sucesso!";
+        // Resetar campo quantidade para próxima entrada
+        document.getElementById("quantidade").value = "";
+        document.getElementById("quantidade").focus();
+      } else {
+        document.getElementById("status").textContent = "Erro ao enviar.";
+      }
+    })
+    .catch(err => {
+      document.getElementById("status").textContent = "Falha: " + err;
+    });
   }
 
   const html5QrcodeScanner = new Html5Qrcode("reader");
