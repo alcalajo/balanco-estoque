@@ -5,59 +5,62 @@
   <title>Balanço de Estoque</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
+    /* Reset e box sizing */
     * {
       box-sizing: border-box;
     }
     html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
+      margin: 0; padding: 0;
+      height: 100vh;
       font-family: Arial, sans-serif;
       background-color: #f4f4f4;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
+      overflow: hidden; /* evita scroll vertical */
     }
     h2 {
-      margin: 15px 0;
-      font-size: 28px;
+      margin: 10px 0 5px 0;
+      font-size: 26px;
       text-align: center;
       width: 100%;
-      max-width: 420px;
+      max-width: 360px;
+      flex-shrink: 0;
     }
     #reader {
-      width: 100vw;
-      max-width: 420px;
-      height: 350px;
+      width: 90vw;
+      max-width: 360px;
+      height: 90vw; /* deixa quadrado, baseado na largura */
+      max-height: 360px;
       border-radius: 12px;
       overflow: hidden;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      margin-bottom: 15px;
       background: #000;
+      flex-shrink: 0;
     }
     .info {
-      width: 100vw;
-      max-width: 420px;
+      width: 90vw;
+      max-width: 360px;
       background: white;
-      padding: 25px 20px;
+      padding: 20px 15px;
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
       text-align: center;
-      margin-bottom: 20px;
+      margin-top: 10px;
       flex-shrink: 0;
     }
     .info p {
-      font-size: 32px; /* maior para facilitar conferência */
-      margin: 0 0 20px 0;
+      font-size: 30px;
+      margin: 0 0 18px 0;
       font-weight: 700;
       color: #222;
       word-break: break-word;
     }
     input[type="number"] {
       width: 100%;
-      padding: 18px 15px;
-      font-size: 28px;
+      padding: 16px 14px;
+      font-size: 26px;
       border: 2px solid #ccc;
       border-radius: 8px;
       outline-offset: 0;
@@ -68,10 +71,10 @@
       box-shadow: 0 0 8px #28a745aa;
     }
     button {
-      margin-top: 25px;
+      margin-top: 22px;
       width: 100%;
-      padding: 18px;
-      font-size: 28px;
+      padding: 16px;
+      font-size: 26px;
       background-color: #28a745;
       color: white;
       border: none;
@@ -84,10 +87,10 @@
       background-color: #218838;
     }
     .status {
-      margin-top: 25px;
+      margin-top: 22px;
       font-weight: 700;
-      font-size: 20px;
-      min-height: 26px;
+      font-size: 18px;
+      min-height: 24px;
       color: #333;
       user-select: none;
     }
@@ -96,14 +99,14 @@
         font-size: 24px;
       }
       .info p {
-        font-size: 28px;
+        font-size: 26px;
       }
       input[type="number"], button {
-        font-size: 24px;
-        padding: 14px;
+        font-size: 22px;
+        padding: 12px;
       }
       .status {
-        font-size: 18px;
+        font-size: 16px;
       }
     }
   </style>
@@ -116,7 +119,15 @@
 
 <div class="info" id="sku-info" style="display:none;">
   <p><strong>SKU:</strong> <span id="sku"></span></p>
-  <input type="number" id="quantidade" placeholder="Digite a quantidade" min="0" step="1" inputmode="numeric" pattern="[0-9]*" />
+  <input
+    type="number"
+    id="quantidade"
+    placeholder="Digite a quantidade"
+    min="0"
+    step="1"
+    inputmode="numeric"
+    pattern="[0-9]*"
+  />
   <button onclick="enviar()">Enviar</button>
   <div class="status" id="status"></div>
 </div>
@@ -187,32 +198,34 @@
         quantidade: parseInt(quantidade, 10)
       })
     })
-    .then(res => {
-      if (res.ok) {
-        playSuccessSound();
-        document.getElementById("status").textContent = "Enviado com sucesso!";
-        document.getElementById("quantidade").value = "";
-        document.getElementById("quantidade").focus();
-      } else {
-        document.getElementById("status").textContent = "Erro ao enviar.";
-      }
-    })
-    .catch(err => {
-      document.getElementById("status").textContent = "Falha: " + err;
-    });
+      .then((res) => {
+        if (res.ok) {
+          playSuccessSound();
+          document.getElementById("status").textContent = "Enviado com sucesso!";
+          document.getElementById("quantidade").value = "";
+          document.getElementById("quantidade").focus();
+        } else {
+          document.getElementById("status").textContent = "Erro ao enviar.";
+        }
+      })
+      .catch((err) => {
+        document.getElementById("status").textContent = "Falha: " + err;
+      });
   }
 
   const html5QrcodeScanner = new Html5Qrcode("reader");
-  html5QrcodeScanner.start(
-    { facingMode: "environment" },
-    {
-      fps: 10,
-      qrbox: { width: 300, height: 300 }
-    },
-    onScanSuccess
-  ).catch(err => {
-    document.getElementById("reader").innerText = "Erro ao acessar a câmera: " + err;
-  });
+  html5QrcodeScanner
+    .start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: { width: 320, height: 320 }, // quadrado
+      },
+      onScanSuccess
+    )
+    .catch((err) => {
+      document.getElementById("reader").innerText = "Erro ao acessar a câmera: " + err;
+    });
 </script>
 
 </body>
