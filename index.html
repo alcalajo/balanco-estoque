@@ -5,61 +5,106 @@
   <title>Balanço de Estoque</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body {
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
       font-family: Arial, sans-serif;
-      padding: 20px;
       background-color: #f4f4f4;
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-height: 100vh;
-      margin: 0;
+      justify-content: flex-start;
     }
-    h2 { text-align: center; margin-bottom: 20px; }
-    #reader { width: 100%; max-width: 400px; margin-bottom: 30px; }
-    .info {
-      width: 100%;
-      max-width: 400px;
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    h2 {
+      margin: 15px 0;
+      font-size: 28px;
       text-align: center;
+      width: 100%;
+      max-width: 420px;
+    }
+    #reader {
+      width: 100vw;
+      max-width: 420px;
+      height: 350px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      margin-bottom: 15px;
+      background: #000;
+    }
+    .info {
+      width: 100vw;
+      max-width: 420px;
+      background: white;
+      padding: 25px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      text-align: center;
+      margin-bottom: 20px;
+      flex-shrink: 0;
     }
     .info p {
-      font-size: 18px;
-      margin-bottom: 15px;
+      font-size: 32px; /* maior para facilitar conferência */
+      margin: 0 0 20px 0;
+      font-weight: 700;
+      color: #222;
+      word-break: break-word;
     }
     input[type="number"] {
       width: 100%;
-      padding: 15px;
-      font-size: 24px;
+      padding: 18px 15px;
+      font-size: 28px;
       border: 2px solid #ccc;
-      border-radius: 6px;
-      box-sizing: border-box;
+      border-radius: 8px;
+      outline-offset: 0;
+      outline-color: #28a745;
+    }
+    input[type="number"]:focus {
+      border-color: #28a745;
+      box-shadow: 0 0 8px #28a745aa;
     }
     button {
-      margin-top: 20px;
+      margin-top: 25px;
       width: 100%;
-      padding: 15px;
-      font-size: 24px;
+      padding: 18px;
+      font-size: 28px;
       background-color: #28a745;
       color: white;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
-      font-weight: bold;
+      font-weight: 700;
       transition: background-color 0.3s ease;
     }
     button:hover {
       background-color: #218838;
     }
     .status {
-      margin-top: 20px;
-      font-weight: bold;
-      font-size: 18px;
-      min-height: 24px;
+      margin-top: 25px;
+      font-weight: 700;
+      font-size: 20px;
+      min-height: 26px;
       color: #333;
+      user-select: none;
+    }
+    @media (max-width: 360px) {
+      h2 {
+        font-size: 24px;
+      }
+      .info p {
+        font-size: 28px;
+      }
+      input[type="number"], button {
+        font-size: 24px;
+        padding: 14px;
+      }
+      .status {
+        font-size: 18px;
+      }
     }
   </style>
 </head>
@@ -80,18 +125,31 @@
   let skuLido = "";
 
   function playSuccessSound() {
-    // Som simples via Web Audio API
     const ctx = new AudioContext();
     const o = ctx.createOscillator();
     const g = ctx.createGain();
     o.type = "sine";
-    o.frequency.value = 880; // frequencia em Hz
+    o.frequency.value = 880;
     o.connect(g);
     g.connect(ctx.destination);
     o.start();
     g.gain.setValueAtTime(1, ctx.currentTime);
     g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
     o.stop(ctx.currentTime + 0.2);
+  }
+
+  function playScanBeep() {
+    const ctx = new AudioContext();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = "square";
+    o.frequency.value = 1200;
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.start();
+    g.gain.setValueAtTime(0.3, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+    o.stop(ctx.currentTime + 0.1);
   }
 
   function onScanSuccess(decodedText) {
@@ -102,11 +160,12 @@
       return;
     }
 
+    playScanBeep();
+
     document.getElementById("sku").textContent = skuLido;
     document.getElementById("sku-info").style.display = "block";
     html5QrcodeScanner.clear();
 
-    // Focar no campo quantidade e abrir teclado automaticamente
     const inputQtd = document.getElementById("quantidade");
     inputQtd.value = "";
     inputQtd.focus();
@@ -132,7 +191,6 @@
       if (res.ok) {
         playSuccessSound();
         document.getElementById("status").textContent = "Enviado com sucesso!";
-        // Resetar campo quantidade para próxima entrada
         document.getElementById("quantidade").value = "";
         document.getElementById("quantidade").focus();
       } else {
@@ -149,7 +207,7 @@
     { facingMode: "environment" },
     {
       fps: 10,
-      qrbox: 250
+      qrbox: { width: 300, height: 300 }
     },
     onScanSuccess
   ).catch(err => {
