@@ -37,16 +37,16 @@
   let skuLido = "";
 
   function onScanSuccess(decodedText) {
-    // Espera SKU no QR code
-    const match = decodedText.match(/SKU:\s*(.*)/);
-    if (match) {
-      skuLido = match[1].trim();
-      document.getElementById("sku").textContent = skuLido;
-      document.getElementById("sku-info").style.display = "block";
-      html5QrcodeScanner.clear();
-    } else {
-      alert("QR Code inválido. Esperado formato: 'SKU: xxx'");
+    skuLido = decodedText.trim();
+
+    if (!skuLido) {
+      alert("QR Code vazio ou inválido.");
+      return;
     }
+
+    document.getElementById("sku").textContent = skuLido;
+    document.getElementById("sku-info").style.display = "block";
+    html5QrcodeScanner.clear();
   }
 
   function enviar() {
@@ -56,7 +56,7 @@
       return;
     }
 
-    fetch("https://SEU_WEBHOOK_DO_N8N", {
+    fetch("https://atendimento-n8n.qirbea.easypanel.host/webhook/balanco", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
