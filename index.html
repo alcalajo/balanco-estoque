@@ -5,7 +5,6 @@
   <title>Balanço de Estoque</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    /* Reset e box sizing */
     * {
       box-sizing: border-box;
     }
@@ -18,7 +17,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      overflow: hidden; /* evita scroll vertical */
+      overflow: hidden;
     }
     h2 {
       margin: 10px 0 5px 0;
@@ -26,18 +25,16 @@
       text-align: center;
       width: 100%;
       max-width: 360px;
-      flex-shrink: 0;
     }
     #reader {
       width: 90vw;
       max-width: 360px;
-      height: 90vw; /* deixa quadrado, baseado na largura */
+      height: 90vw;
       max-height: 360px;
       border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
       background: #000;
-      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
     .info {
       width: 90vw;
@@ -48,14 +45,18 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
       text-align: center;
       margin-top: 10px;
-      flex-shrink: 0;
     }
     .info p {
       font-size: 30px;
-      margin: 0 0 18px 0;
+      margin: 0 0 12px 0;
       font-weight: 700;
       color: #222;
       word-break: break-word;
+    }
+    .estoque-info {
+      font-size: 22px;
+      margin-bottom: 18px;
+      color: #555;
     }
     input[type="number"] {
       width: 100%;
@@ -119,6 +120,7 @@
 
 <div class="info" id="sku-info" style="display:none;">
   <p><strong>SKU:</strong> <span id="sku"></span></p>
+  <div class="estoque-info" id="estoque-atual">Consultando estoque...</div>
   <input
     type="number"
     id="quantidade"
@@ -180,6 +182,34 @@
     const inputQtd = document.getElementById("quantidade");
     inputQtd.value = "";
     inputQtd.focus();
+
+    // ENVIAR CONSULTA INSTANTÂNEA PARA O N8N
+    fetch("https://atendimento-n8n.qirbea.easypanel.host/webhook/consulta-instantanea", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tipo: "consulta",
+        sku: skuLido
+      })
+    });
+
+    // BUSCAR ESTOQUE ATUAL
+    document.getElementById("estoque-atual").textContent = "Consultando estoque...";
+
+    fetch(`https://atendimento-n8n.qirbea.easypanel.host/webhook/consultar-estoque?sku=${skuLido}`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          const produto = data[0];
+          document.getElementById("estoque-atual").textContent =
+            `Estoque atual: ${produto.saldo_total} unidades (reservado: ${produto.saldo_reservado})`;
+        } else {
+          document.getElementById("estoque-atual").textContent = "Produto não encontrado.";
+        }
+      })
+      .catch(err => {
+        document.getElementById("estoque-atual").textContent = "Erro ao consultar estoque.";
+      });
   }
 
   function enviar() {
@@ -219,7 +249,7 @@
       { facingMode: "environment" },
       {
         fps: 10,
-        qrbox: { width: 320, height: 320 }, // quadrado
+        qrbox: { width: 320, height: 320 },
       },
       onScanSuccess
     )
