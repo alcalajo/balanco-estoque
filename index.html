@@ -26,17 +26,23 @@
       font-weight: bold;
       margin-top: 10px;
     }
-    #productImage {
+    #infoWrapper {
       margin-top: 10px;
-      max-width: 300px;
-      width: 60%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    #productImage {
+      max-width: 100px;
       height: auto;
-      border-radius: 10px;
+      border-radius: 8px;
       border: 1px solid #ccc;
     }
     #estoqueInfo {
-      margin-top: 10px;
       font-size: 1.2em;
+      text-align: left;
       line-height: 1.6;
     }
     #quantidade {
@@ -69,8 +75,12 @@
   <h2>Leitor de QR Code</h2>
   <div id="reader"></div>
   <div id="skuDisplay"></div>
-  <img id="productImage" style="display:none;" />
-  <div id="estoqueInfo"></div>
+
+  <div id="infoWrapper" style="display:none;">
+    <img id="productImage" />
+    <div id="estoqueInfo"></div>
+  </div>
+
   <input type="number" id="quantidade" placeholder="Quantidade" />
   <button id="enviar">Enviar</button>
   <div id="mensagem"></div>
@@ -86,6 +96,7 @@
     const mensagem = document.getElementById("mensagem");
     const productImage = document.getElementById("productImage");
     const estoqueInfo = document.getElementById("estoqueInfo");
+    const infoWrapper = document.getElementById("infoWrapper");
     const successSound = document.getElementById("successSound");
 
     let currentSku = "";
@@ -100,6 +111,7 @@
       estoqueInfo.textContent = "";
       quantidadeInput.value = "";
       mensagem.textContent = "";
+      infoWrapper.style.display = "none";
 
       fetch("https://atendimento-n8n.qirbea.easypanel.host/webhook/consulta-instantanea", {
         method: "POST",
@@ -111,15 +123,21 @@
         .then(response => response.json())
         .then(data => {
           skuDisplay.textContent = data.codigo;
+
+          const disponivel = data.saldo_total - data.saldo_reservado;
           estoqueInfo.innerHTML = `
             📦 <strong>Estoque atual:</strong> ${data.saldo_total} unidades<br>
             📌 <strong>Reservado:</strong> ${data.saldo_reservado}<br>
+            ✅ <strong>Disponível:</strong> ${disponivel}<br>
             📍 <strong>Localização:</strong> ${data.localizacao || "N/D"}
           `;
+
           if (data.imagem) {
             productImage.src = data.imagem;
             productImage.style.display = "block";
           }
+
+          infoWrapper.style.display = "flex";
           beep();
           quantidadeInput.focus();
         })
