@@ -5,11 +5,13 @@
   <title>Balanço de Estoque</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
+    /* ... (mesmo CSS anterior, omitido para brevidade) ... */
     * {
       box-sizing: border-box;
     }
     html, body {
-      margin: 0; padding: 0;
+      margin: 0;
+      padding: 0;
       height: 100vh;
       font-family: Arial, sans-serif;
       background-color: #f4f4f4;
@@ -27,10 +29,10 @@
       max-width: 360px;
     }
     #reader {
+      position: relative;
       width: 90vw;
       max-width: 360px;
-      height: 90vw;
-      max-height: 360px;
+      aspect-ratio: 1 / 1;
       border-radius: 12px;
       overflow: hidden;
       background: #000;
@@ -95,6 +97,10 @@
       color: #333;
       user-select: none;
     }
+    #reader > div > div {
+      border: 3px dashed #4CAF50 !important;
+      border-radius: 10px;
+    }
     @media (max-width: 360px) {
       h2 {
         font-size: 24px;
@@ -136,6 +142,10 @@
 
 <script>
   let skuLido = "";
+  let scannerAtivo = true;
+  const largura = Math.min(window.innerWidth * 0.9, 360);
+
+  const html5QrcodeScanner = new Html5Qrcode("reader");
 
   function playSuccessSound() {
     const ctx = new AudioContext();
@@ -165,11 +175,14 @@
     o.stop(ctx.currentTime + 0.1);
   }
 
-  function onScanSuccess(decodedText) {
-    skuLido = decodedText.trim();
+  async function onScanSuccess(decodedText) {
+    if (!scannerAtivo) return; // Bloqueia se já estiver consultando
+    scannerAtivo = false;      // Bloqueia scanner
 
+    skuLido = decodedText.trim();
     if (!skuLido) {
       alert("QR Code vazio ou inválido.");
+      scannerAtivo = true; // Libera scanner se inválido
       return;
     }
 
@@ -177,39 +190,45 @@
 
     document.getElementById("sku").textContent = skuLido;
     document.getElementById("sku-info").style.display = "block";
-    html5QrcodeScanner.clear();
+
+    // Pausa o scanner para evitar múltiplas leituras
+    await html5QrcodeScanner.pause();
 
     const inputQtd = document.getElementById("quantidade");
     inputQtd.value = "";
     inputQtd.focus();
 
-    // ENVIAR CONSULTA INSTANTÂNEA PARA O N8N
+    document.getElementById("estoque-atual").textContent = "Consultando estoque...";
+    document.getElementById("status").textContent = "";
+
+    // Envia webhook de consulta (POST)
     fetch("https://atendimento-n8n.qirbea.easypanel.host/webhook/consulta-instantanea", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tipo: "consulta",
-        sku: skuLido
-      })
-    });
+      body: JSON.stringify({ tipo: "consulta", sku: skuLido })
+    }).catch(() => { /* não trava se erro aqui */ });
 
-    // BUSCAR ESTOQUE ATUAL
-    document.getElementById("estoque-atual").textContent = "Consultando estoque...";
-
-    fetch(`https://atendimento-n8n.qirbea.easypanel.host/webhook/consulta-instantanea?sku=${skuLido}`)
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          const produto = data[0];
-          document.getElementById("estoque-atual").textContent =
-            `Estoque atual: ${produto.saldo_total} unidades (reservado: ${produto.saldo_reservado})`;
-        } else {
-          document.getElementById("estoque-atual").textContent = "Produto não encontrado.";
-        }
-      })
-      .catch(err => {
-        document.getElementById("estoque-atual").textContent = "Erro ao consultar estoque.";
+    // Consulta estoque atual e espera resposta para liberar scanner
+    try {
+      const res = await fetch("https://atendimento-n8n.qirbea.easypanel.host/webhook/consulta-instantanea", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sku: skuLido })
       });
+      const data = await res.json();
+
+      if (data && data.saldo_total !== undefined) {
+        document.getElementById("estoque-atual").textContent =
+          `Estoque atual: ${data.saldo_total} unidades (reservado: ${data.saldo_reservado})`;
+      } else {
+        document.getElementById("estoque-atual").textContent = "Produto não encontrado.";
+      }
+    } catch (e) {
+      document.getElementById("estoque-atual").textContent = "Erro ao consultar estoque.";
+    } finally {
+      scannerAtivo = true;
+      await html5QrcodeScanner.resume();
+    }
   }
 
   function enviar() {
@@ -228,28 +247,27 @@
         quantidade: parseInt(quantidade, 10)
       })
     })
-      .then((res) => {
-        if (res.ok) {
-          playSuccessSound();
-          document.getElementById("status").textContent = "Enviado com sucesso!";
-          document.getElementById("quantidade").value = "";
-          document.getElementById("quantidade").focus();
-        } else {
-          document.getElementById("status").textContent = "Erro ao enviar.";
-        }
-      })
-      .catch((err) => {
-        document.getElementById("status").textContent = "Falha: " + err;
-      });
+    .then(res => {
+      if (res.ok) {
+        playSuccessSound();
+        document.getElementById("status").textContent = "Enviado com sucesso!";
+        document.getElementById("quantidade").value = "";
+        document.getElementById("quantidade").focus();
+      } else {
+        document.getElementById("status").textContent = "Erro ao enviar.";
+      }
+    })
+    .catch(err => {
+      document.getElementById("status").textContent = "Falha: " + err;
+    });
   }
 
-  const html5QrcodeScanner = new Html5Qrcode("reader");
   html5QrcodeScanner
     .start(
       { facingMode: "environment" },
       {
         fps: 10,
-        qrbox: { width: 320, height: 320 },
+        qrbox: { width: largura, height: largura }
       },
       onScanSuccess
     )
