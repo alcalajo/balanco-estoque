@@ -196,7 +196,7 @@
     // BUSCAR ESTOQUE ATUAL
     document.getElementById("estoque-atual").textContent = "Consultando estoque...";
 
-    fetch(`https://atendimento-n8n.qirbea.easypanel.host/webhook/consultar-estoque?sku=${skuLido}`)
+    fetch(`https://atendimento-n8n.qirbea.easypanel.host/webhook/consulta-instantanea?sku=${skuLido}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
