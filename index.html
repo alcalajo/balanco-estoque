@@ -5,13 +5,11 @@
   <title>Balanço de Estoque</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    /* ... (mesmo CSS anterior, omitido para brevidade) ... */
     * {
       box-sizing: border-box;
     }
     html, body {
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
       height: 100vh;
       font-family: Arial, sans-serif;
       background-color: #f4f4f4;
@@ -37,6 +35,8 @@
       overflow: hidden;
       background: #000;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border: 3px dashed #4CAF50 !important;
+      margin-bottom: 10px;
     }
     .info {
       width: 90vw;
@@ -46,19 +46,29 @@
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
       text-align: center;
-      margin-top: 10px;
+      margin-top: 0;
+    }
+    .produto-img {
+      max-width: 100%;
+      max-height: 140px;
+      object-fit: contain;
+      margin-bottom: 15px;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
     }
     .info p {
-      font-size: 30px;
-      margin: 0 0 12px 0;
+      font-size: 22px;
+      margin: 0 0 8px 0;
       font-weight: 700;
       color: #222;
       word-break: break-word;
     }
     .estoque-info {
-      font-size: 22px;
-      margin-bottom: 18px;
-      color: #555;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: #1b5e20; /* verde escuro */
+      min-height: 38px;
     }
     input[type="number"] {
       width: 100%;
@@ -86,34 +96,37 @@
       font-weight: 700;
       transition: background-color 0.3s ease;
     }
-    button:hover {
+    button:hover:not(:disabled) {
       background-color: #218838;
     }
-    .status {
-      margin-top: 22px;
-      font-weight: 700;
-      font-size: 18px;
-      min-height: 24px;
-      color: #333;
-      user-select: none;
+    button:disabled {
+      background-color: #999;
+      cursor: not-allowed;
     }
-    #reader > div > div {
-      border: 3px dashed #4CAF50 !important;
-      border-radius: 10px;
+    .status {
+      font-size: 22px;
+      font-weight: 700;
+      margin-top: 24px;
+      color: #2e7d32; /* verde */
+      min-height: 28px;
     }
     @media (max-width: 360px) {
       h2 {
         font-size: 24px;
       }
       .info p {
-        font-size: 26px;
+        font-size: 20px;
       }
       input[type="number"], button {
         font-size: 22px;
         padding: 12px;
       }
       .status {
-        font-size: 16px;
+        font-size: 18px;
+      }
+      .estoque-info {
+        font-size: 24px;
+        min-height: 34px;
       }
     }
   </style>
@@ -125,6 +138,7 @@
 <div id="reader"></div>
 
 <div class="info" id="sku-info" style="display:none;">
+  <img id="produto-img" class="produto-img" src="" alt="Imagem do Produto" style="display:none;" />
   <p><strong>SKU:</strong> <span id="sku"></span></p>
   <div class="estoque-info" id="estoque-atual">Consultando estoque...</div>
   <input
@@ -135,16 +149,17 @@
     step="1"
     inputmode="numeric"
     pattern="[0-9]*"
+    autocomplete="off"
   />
-  <button onclick="enviar()">Enviar</button>
+  <button id="btnEnviar" onclick="enviar()">Enviar</button>
   <div class="status" id="status"></div>
 </div>
 
 <script>
   let skuLido = "";
   let scannerAtivo = true;
-  const largura = Math.min(window.innerWidth * 0.9, 360);
 
+  const largura = Math.min(window.innerWidth * 0.9, 360);
   const html5QrcodeScanner = new Html5Qrcode("reader");
 
   function playSuccessSound() {
@@ -176,13 +191,13 @@
   }
 
   async function onScanSuccess(decodedText) {
-    if (!scannerAtivo) return; // Bloqueia se já estiver consultando
-    scannerAtivo = false;      // Bloqueia scanner
+    if (!scannerAtivo) return;
+    scannerAtivo = false;
 
     skuLido = decodedText.trim();
     if (!skuLido) {
       alert("QR Code vazio ou inválido.");
-      scannerAtivo = true; // Libera scanner se inválido
+      scannerAtivo = true;
       return;
     }
 
@@ -191,7 +206,6 @@
     document.getElementById("sku").textContent = skuLido;
     document.getElementById("sku-info").style.display = "block";
 
-    // Pausa o scanner para evitar múltiplas leituras
     await html5QrcodeScanner.pause();
 
     const inputQtd = document.getElementById("quantidade");
@@ -200,31 +214,45 @@
 
     document.getElementById("estoque-atual").textContent = "Consultando estoque...";
     document.getElementById("status").textContent = "";
+    document.getElementById("produto-img").style.display = "none";
 
-    // Envia webhook de consulta (POST)
-    fetch("https://atendimento-n8n.qirbea.easypanel.host/webhook/consulta-instantanea", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tipo: "consulta", sku: skuLido })
-    }).catch(() => { /* não trava se erro aqui */ });
-
-    // Consulta estoque atual e espera resposta para liberar scanner
     try {
+      // Envia consulta para o webhook (só o corpo com sku)
+      await fetch("https://atendimento-n8n.qirbea.easypanel.host/webhook/consulta-instantanea", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "consulta", sku: skuLido })
+      });
+
+      // Espera a resposta da consulta (ou faça o fluxo no n8n para responder direto ao webhook)
       const res = await fetch("https://atendimento-n8n.qirbea.easypanel.host/webhook/consulta-instantanea", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sku: skuLido })
       });
+
+      if (!res.ok) throw new Error("Resposta não OK: " + res.status);
+
       const data = await res.json();
 
       if (data && data.saldo_total !== undefined) {
         document.getElementById("estoque-atual").textContent =
           `Estoque atual: ${data.saldo_total} unidades (reservado: ${data.saldo_reservado})`;
+
+        if (data.imagem) {
+          const img = document.getElementById("produto-img");
+          img.src = data.imagem;
+          img.style.display = "block";
+        } else {
+          document.getElementById("produto-img").style.display = "none";
+        }
       } else {
         document.getElementById("estoque-atual").textContent = "Produto não encontrado.";
+        document.getElementById("produto-img").style.display = "none";
       }
     } catch (e) {
       document.getElementById("estoque-atual").textContent = "Erro ao consultar estoque.";
+      document.getElementById("produto-img").style.display = "none";
     } finally {
       scannerAtivo = true;
       await html5QrcodeScanner.resume();
@@ -237,6 +265,10 @@
       alert("Digite uma quantidade válida.");
       return;
     }
+
+    const btn = document.getElementById("btnEnviar");
+    btn.disabled = true;
+    document.getElementById("status").textContent = "Enviando...";
 
     fetch("https://atendimento-n8n.qirbea.easypanel.host/webhook/balanco", {
       method: "POST",
@@ -259,6 +291,9 @@
     })
     .catch(err => {
       document.getElementById("status").textContent = "Falha: " + err;
+    })
+    .finally(() => {
+      btn.disabled = false;
     });
   }
 
