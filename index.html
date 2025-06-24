@@ -1,315 +1,172 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Balanço de Estoque</title>
-  <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    * {
-      box-sizing: border-box;
-    }
-    html, body {
-      margin: 0; padding: 0;
-      height: 100vh;
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      overflow: hidden;
-    }
-    h2 {
-      margin: 10px 0 5px 0;
-      font-size: 26px;
+    body {
+      font-family: sans-serif;
+      background-color: #f8f8f8;
+      margin: 0;
+      padding: 10px;
       text-align: center;
-      width: 100%;
-      max-width: 360px;
     }
     #reader {
-      position: relative;
-      width: 90vw;
-      max-width: 360px;
-      aspect-ratio: 1 / 1;
+      width: 100%;
+      max-width: 320px;
+      margin: 0 auto;
+      aspect-ratio: 1/1;
+      border: 3px solid #4caf50;
       border-radius: 12px;
       overflow: hidden;
-      background: #000;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      border: 3px dashed #4CAF50 !important;
-      margin-bottom: 10px;
     }
-    .info {
-      width: 90vw;
-      max-width: 360px;
-      background: white;
-      padding: 20px 15px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      text-align: center;
-      margin-top: 0;
+    #skuDisplay {
+      font-size: 1.6em;
+      font-weight: bold;
+      margin-top: 10px;
     }
-    .produto-img {
-      max-width: 100%;
-      max-height: 140px;
-      object-fit: contain;
-      margin-bottom: 15px;
-      border-radius: 12px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    #productImage {
+      margin-top: 10px;
+      max-width: 300px;
+      width: 60%;
+      height: auto;
+      border-radius: 10px;
+      border: 1px solid #ccc;
     }
-    .info p {
-      font-size: 22px;
-      margin: 0 0 8px 0;
-      font-weight: 700;
-      color: #222;
-      word-break: break-word;
+    #estoqueInfo {
+      margin-top: 10px;
+      font-size: 1.2em;
     }
-    .estoque-info {
-      font-size: 28px;
-      font-weight: 700;
-      margin-bottom: 20px;
-      color: #1b5e20; /* verde escuro */
-      min-height: 38px;
-    }
-    input[type="number"] {
+    #quantidade {
+      font-size: 1.4em;
+      padding: 10px;
       width: 100%;
-      padding: 16px 14px;
-      font-size: 26px;
-      border: 2px solid #ccc;
-      border-radius: 8px;
-      outline-offset: 0;
-      outline-color: #28a745;
+      max-width: 160px;
+      margin-top: 15px;
+      border-radius: 6px;
+      border: 1px solid #999;
     }
-    input[type="number"]:focus {
-      border-color: #28a745;
-      box-shadow: 0 0 8px #28a745aa;
-    }
-    button {
-      margin-top: 22px;
-      width: 100%;
-      padding: 16px;
-      font-size: 26px;
-      background-color: #28a745;
+    #enviar {
+      margin-top: 10px;
+      font-size: 1.4em;
+      padding: 10px 20px;
+      background-color: #4caf50;
       color: white;
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      font-weight: 700;
-      transition: background-color 0.3s ease;
     }
-    button:hover:not(:disabled) {
-      background-color: #218838;
-    }
-    button:disabled {
-      background-color: #999;
-      cursor: not-allowed;
-    }
-    .status {
-      font-size: 22px;
-      font-weight: 700;
-      margin-top: 24px;
-      color: #2e7d32; /* verde */
-      min-height: 28px;
-    }
-    @media (max-width: 360px) {
-      h2 {
-        font-size: 24px;
-      }
-      .info p {
-        font-size: 20px;
-      }
-      input[type="number"], button {
-        font-size: 22px;
-        padding: 12px;
-      }
-      .status {
-        font-size: 18px;
-      }
-      .estoque-info {
-        font-size: 24px;
-        min-height: 34px;
-      }
+    #mensagem {
+      margin-top: 15px;
+      font-weight: bold;
+      font-size: 1.2em;
     }
   </style>
 </head>
 <body>
+  <h2>Leitor de QR Code</h2>
+  <div id="reader"></div>
+  <div id="skuDisplay"></div>
+  <img id="productImage" style="display:none;" />
+  <div id="estoqueInfo"></div>
+  <input type="number" id="quantidade" placeholder="Quantidade" />
+  <button id="enviar">Enviar</button>
+  <div id="mensagem"></div>
 
-<h2>Balanço de Estoque</h2>
+  <audio id="successSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_604adddcd2.mp3?filename=success-1-6297.mp3"></audio>
 
-<div id="reader"></div>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script>
+    const reader = new Html5Qrcode("reader");
+    const skuDisplay = document.getElementById("skuDisplay");
+    const quantidadeInput = document.getElementById("quantidade");
+    const enviarBtn = document.getElementById("enviar");
+    const mensagem = document.getElementById("mensagem");
+    const productImage = document.getElementById("productImage");
+    const estoqueInfo = document.getElementById("estoqueInfo");
+    const successSound = document.getElementById("successSound");
 
-<div class="info" id="sku-info" style="display:none;">
-  <img id="produto-img" class="produto-img" src="" alt="Imagem do Produto" style="display:none;" />
-  <p><strong>SKU:</strong> <span id="sku"></span></p>
-  <div class="estoque-info" id="estoque-atual">Consultando estoque...</div>
-  <input
-    type="number"
-    id="quantidade"
-    placeholder="Digite a quantidade"
-    min="0"
-    step="1"
-    inputmode="numeric"
-    pattern="[0-9]*"
-    autocomplete="off"
-  />
-  <button id="btnEnviar" onclick="enviar()">Enviar</button>
-  <div class="status" id="status"></div>
-</div>
+    let currentSku = "";
 
-<script>
-  let skuLido = "";
-  let scannerAtivo = true;
-
-  const largura = Math.min(window.innerWidth * 0.9, 360);
-  const html5QrcodeScanner = new Html5Qrcode("reader");
-
-  function playSuccessSound() {
-    const ctx = new AudioContext();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = "sine";
-    o.frequency.value = 880;
-    o.connect(g);
-    g.connect(ctx.destination);
-    o.start();
-    g.gain.setValueAtTime(1, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
-    o.stop(ctx.currentTime + 0.2);
-  }
-
-  function playScanBeep() {
-    const ctx = new AudioContext();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = "square";
-    o.frequency.value = 1200;
-    o.connect(g);
-    g.connect(ctx.destination);
-    o.start();
-    g.gain.setValueAtTime(0.3, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-    o.stop(ctx.currentTime + 0.1);
-  }
-
-  async function onScanSuccess(decodedText) {
-    if (!scannerAtivo) return;
-    scannerAtivo = false;
-
-    skuLido = decodedText.trim();
-    if (!skuLido) {
-      alert("QR Code vazio ou inválido.");
-      scannerAtivo = true;
-      return;
+    function beep() {
+      successSound.play();
     }
 
-    playScanBeep();
+    function consultarEstoque(sku) {
+      skuDisplay.textContent = "Consultando estoque...";
+      productImage.style.display = "none";
+      estoqueInfo.textContent = "";
+      quantidadeInput.value = "";
+      mensagem.textContent = "";
 
-    document.getElementById("sku").textContent = skuLido;
-    document.getElementById("sku-info").style.display = "block";
-
-    await html5QrcodeScanner.pause();
-
-    const inputQtd = document.getElementById("quantidade");
-    inputQtd.value = "";
-    inputQtd.focus();
-
-    document.getElementById("estoque-atual").textContent = "Consultando estoque...";
-    document.getElementById("status").textContent = "";
-    document.getElementById("produto-img").style.display = "none";
-
-    try {
-      // Envia consulta para o webhook (só o corpo com sku)
-      await fetch("https://atendimento-n8n.qirbea.easypanel.host/webhook/consulta-instantanea", {
+      fetch("https://atendimento-n8n.qirbea.easypanel.host/webhook/consulta-instantanea", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo: "consulta", sku: skuLido })
-      });
-
-      // Espera a resposta da consulta (ou faça o fluxo no n8n para responder direto ao webhook)
-      const res = await fetch("https://atendimento-n8n.qirbea.easypanel.host/webhook/consulta-instantanea", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sku: skuLido })
-      });
-
-      if (!res.ok) throw new Error("Resposta não OK: " + res.status);
-
-      const data = await res.json();
-
-      if (data && data.saldo_total !== undefined) {
-        document.getElementById("estoque-atual").textContent =
-          `Estoque atual: ${data.saldo_total} unidades (reservado: ${data.saldo_reservado})`;
-
-        if (data.imagem) {
-          const img = document.getElementById("produto-img");
-          img.src = data.imagem;
-          img.style.display = "block";
-        } else {
-          document.getElementById("produto-img").style.display = "none";
-        }
-      } else {
-        document.getElementById("estoque-atual").textContent = "Produto não encontrado.";
-        document.getElementById("produto-img").style.display = "none";
-      }
-    } catch (e) {
-      document.getElementById("estoque-atual").textContent = "Erro ao consultar estoque.";
-      document.getElementById("produto-img").style.display = "none";
-    } finally {
-      scannerAtivo = true;
-      await html5QrcodeScanner.resume();
-    }
-  }
-
-  function enviar() {
-    const quantidade = document.getElementById("quantidade").value;
-    if (!quantidade || isNaN(quantidade) || quantidade < 0) {
-      alert("Digite uma quantidade válida.");
-      return;
-    }
-
-    const btn = document.getElementById("btnEnviar");
-    btn.disabled = true;
-    document.getElementById("status").textContent = "Enviando...";
-
-    fetch("https://atendimento-n8n.qirbea.easypanel.host/webhook/balanco", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tipo: "balanco",
-        sku: skuLido,
-        quantidade: parseInt(quantidade, 10)
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ tipo: "consulta", sku })
       })
-    })
-    .then(res => {
-      if (res.ok) {
-        playSuccessSound();
-        document.getElementById("status").textContent = "Enviado com sucesso!";
-        document.getElementById("quantidade").value = "";
-        document.getElementById("quantidade").focus();
-      } else {
-        document.getElementById("status").textContent = "Erro ao enviar.";
-      }
-    })
-    .catch(err => {
-      document.getElementById("status").textContent = "Falha: " + err;
-    })
-    .finally(() => {
-      btn.disabled = false;
-    });
-  }
+        .then(response => response.json())
+        .then(data => {
+          skuDisplay.textContent = data.codigo;
+          estoqueInfo.innerHTML = `📦 Estoque atual: <strong>${data.saldo_total}</strong> unidades<br>📌 Reservado: <strong>${data.saldo_reservado}</strong>`;
+          if (data.imagem) {
+            productImage.src = data.imagem;
+            productImage.style.display = "block";
+          }
+          beep();
+          quantidadeInput.focus();
+        })
+        .catch(err => {
+          skuDisplay.textContent = "Erro ao consultar estoque";
+          console.error(err);
+        });
+    }
 
-  html5QrcodeScanner
-    .start(
+    function enviarQuantidade() {
+      const quantidade = quantidadeInput.value.trim();
+      if (!currentSku || !quantidade) {
+        mensagem.textContent = "Preencha o SKU e a quantidade.";
+        return;
+      }
+
+      fetch("https://atendimento-n8n.qirbea.easypanel.host/webhook/balanco", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          tipo: "balanco",
+          sku: currentSku,
+          quantidade: parseInt(quantidade)
+        })
+      })
+        .then(() => {
+          mensagem.textContent = "✅ Enviado com sucesso!";
+          quantidadeInput.value = "";
+          quantidadeInput.focus();
+        })
+        .catch(() => {
+          mensagem.textContent = "Erro ao enviar.";
+        });
+    }
+
+    reader.start(
       { facingMode: "environment" },
       {
         fps: 10,
-        qrbox: { width: largura, height: largura }
+        qrbox: { width: 250, height: 250 }
       },
-      onScanSuccess
-    )
-    .catch((err) => {
-      document.getElementById("reader").innerText = "Erro ao acessar a câmera: " + err;
-    });
-</script>
+      (decodedText) => {
+        if (decodedText !== currentSku) {
+          currentSku = decodedText;
+          consultarEstoque(currentSku);
+        }
+      }
+    );
 
+    enviarBtn.addEventListener("click", enviarQuantidade);
+  </script>
 </body>
 </html>
