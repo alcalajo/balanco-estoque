@@ -37,6 +37,7 @@
     #estoqueInfo {
       margin-top: 10px;
       font-size: 1.2em;
+      line-height: 1.6;
     }
     #quantidade {
       font-size: 1.4em;
@@ -110,7 +111,11 @@
         .then(response => response.json())
         .then(data => {
           skuDisplay.textContent = data.codigo;
-          estoqueInfo.innerHTML = `📦 Estoque atual: <strong>${data.saldo_total}</strong> unidades<br>📌 Reservado: <strong>${data.saldo_reservado}</strong>`;
+          estoqueInfo.innerHTML = `
+            📦 <strong>Estoque atual:</strong> ${data.saldo_total} unidades<br>
+            📌 <strong>Reservado:</strong> ${data.saldo_reservado}<br>
+            📍 <strong>Localização:</strong> ${data.localizacao || "N/D"}
+          `;
           if (data.imagem) {
             productImage.src = data.imagem;
             productImage.style.display = "block";
