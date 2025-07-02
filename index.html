@@ -209,18 +209,26 @@
 
       reader = new Html5Qrcode("reader");
       reader.start(
-        { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 }
-        },
-        (decodedText) => {
-          if (decodedText !== currentSku) {
-            currentSku = decodedText;
-            consultarEstoque(currentSku);
-          }
-        }
-      );
+  { facingMode: "environment" },
+  {
+    fps: 15, // aumenta a frequência de captura de frames
+    qrbox: { width: 250, height: 250 },
+    rememberLastUsedCamera: true,
+    aspectRatio: 1.0,
+    videoConstraints: {
+      facingMode: "environment",
+      width: { ideal: 1280 }, // pode testar com 1920
+      height: { ideal: 720 }
+    }
+  },
+  (decodedText) => {
+    if (decodedText !== currentSku) {
+      currentSku = decodedText;
+      consultarEstoque(currentSku);
+    }
+  }
+);
+
     });
 
     enviarBtn.addEventListener("click", enviarQuantidade);
