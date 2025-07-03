@@ -211,13 +211,11 @@
       reader.start(
   { facingMode: "environment" },
   {
-    fps: 15, // aumenta a frequência de captura de frames
-    qrbox: { width: 250, height: 250 },
+    fps: 15,
     rememberLastUsedCamera: true,
-    aspectRatio: 1.0,
     videoConstraints: {
       facingMode: "environment",
-      width: { ideal: 1280 }, // pode testar com 1920
+      width: { ideal: 1280 },
       height: { ideal: 720 }
     }
   },
@@ -228,7 +226,6 @@
     }
   }
 );
-
     });
 
     enviarBtn.addEventListener("click", enviarQuantidade);
