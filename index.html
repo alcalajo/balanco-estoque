@@ -69,6 +69,17 @@
       border-radius: 8px;
       cursor: pointer;
     }
+    #novaLeitura {
+      margin-top: 10px;
+      font-size: 1.2em;
+      padding: 10px 20px;
+      background-color: #2196f3;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      display: none;
+    }
     #mensagem {
       margin-top: 15px;
       font-weight: bold;
@@ -99,6 +110,7 @@
 
   <input type="number" id="quantidade" placeholder="Quantidade" />
   <button id="enviar">Enviar</button>
+  <button id="novaLeitura">Nova Leitura</button>
   <div id="mensagem"></div>
 
   <audio id="successSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_604adddcd2.mp3?filename=success-1-6297.mp3" preload="auto"></audio>
@@ -110,6 +122,7 @@
     const skuDisplay = document.getElementById("skuDisplay");
     const quantidadeInput = document.getElementById("quantidade");
     const enviarBtn = document.getElementById("enviar");
+    const novaLeituraBtn = document.getElementById("novaLeitura");
     const mensagem = document.getElementById("mensagem");
     const productImage = document.getElementById("productImage");
     const estoqueInfo = document.getElementById("estoqueInfo");
@@ -158,6 +171,13 @@
           infoWrapper.style.display = "flex";
           beep();
           quantidadeInput.focus();
+
+          // Desliga a câmera após leitura
+          reader.stop().then(() => {
+            reader.clear();
+            readerDiv.style.display = "none";
+            novaLeituraBtn.style.display = "inline-block";
+          }).catch(err => console.error("Erro ao parar câmera:", err));
         })
         .catch(err => {
           skuDisplay.textContent = "Erro ao consultar estoque";
@@ -172,7 +192,6 @@
         return;
       }
 
-      // Toca som no clique do botão também
       beep();
 
       fetch("https://atendimento-n8n.qirbea.easypanel.host/webhook/balanco", {
@@ -196,36 +215,40 @@
         });
     }
 
+    function iniciarLeitura() {
+      reader = new Html5Qrcode("reader");
+      reader.start(
+        { facingMode: "environment" },
+        {
+          fps: 15,
+          rememberLastUsedCamera: true,
+          qrbox: { width: 250, height: 250 },
+          fullRegionScan: true,
+        },
+        (decodedText) => {
+          if (decodedText !== currentSku) {
+            currentSku = decodedText;
+            consultarEstoque(currentSku);
+          }
+        }
+      ).catch(err => {
+        console.error("Erro ao iniciar leitor:", err);
+      });
+    }
+
     startButton.addEventListener("click", async () => {
       startButton.style.display = "none";
       readerDiv.style.display = "block";
-      try {
-        await successSound.play(); // desbloqueia som
-        successSound.pause();
-        successSound.currentTime = 0;
-      } catch (e) {
-        console.log("Som desbloqueado.");
-      }
+      await successSound.play().catch(() => {});
+      successSound.pause();
+      successSound.currentTime = 0;
+      iniciarLeitura();
+    });
 
-      reader = new Html5Qrcode("reader");
-      reader.start(
-  { facingMode: "environment" },
-  {
-    fps: 15,
-    rememberLastUsedCamera: true,
-    videoConstraints: {
-      facingMode: "environment",
-      width: { ideal: 1280 },
-      height: { ideal: 720 }
-    }
-  },
-  (decodedText) => {
-    if (decodedText !== currentSku) {
-      currentSku = decodedText;
-      consultarEstoque(currentSku);
-    }
-  }
-);
+    novaLeituraBtn.addEventListener("click", () => {
+      novaLeituraBtn.style.display = "none";
+      readerDiv.style.display = "block";
+      iniciarLeitura();
     });
 
     enviarBtn.addEventListener("click", enviarQuantidade);
